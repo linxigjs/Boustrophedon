@@ -10,54 +10,41 @@ using namespace cv;
 using namespace std;
 
 
-struct biTuple
-{
-biTuple(int a,int b) {
-    this->a=a;
-    this->b=b;
-}
-
-int a;
-int b;
-};
-
-typedef std::vector<biTuple> Slice;
-
 class Boustrophedon{
 private:
     int obstacle_ = 255, valid_ = 0;
 public:
     //slice是图片的一列像素
-    Slice CalcConnectivity(const Mat &slice, int &connectivity) {
-        connectivity = 0;
-        int last_data = 1;
+    vector<Range> CalcConnectivity(const Mat &one_col, int &valid_seg_cnt_in_1col) {
+        valid_seg_cnt_in_1col = 0;
+        int last_data = obstacle_;
         bool open_start = false;
-        Slice connective_parts;
+        vector<Range> valid_seg_in_1col;
         int start_point = 0;
         int end_point = 0;
-        for(int i=0; i<slice.rows; ++i) {
-            int data = slice.at<u_char>(i,0);     //slice只有一列，因此第二个坐标一定是0
-            if(last_data == 1 && data == 0) {        //黑色-认为开始处
+        for(int i=0; i<one_col.rows; ++i) {
+            int data = one_col.at<u_char>(i,0);     //slice只有一列，因此第二个坐标一定是0
+            if(last_data == obstacle_ && data == valid_) {        //黑色-认为开始处
                 open_start = true;
                 start_point = i;
-            } else if((last_data==0 && data==1 && open_start) || (open_start && i==slice.rows-1)) {     //右侧条件对应底部边界
+            } else if((last_data==valid_ && data==obstacle_ && open_start) || (open_start && i==one_col.rows-1)) {     //右侧条件对应底部边界
                 open_start = false;
-                connectivity += 1;
+                valid_seg_cnt_in_1col += 1;
                 end_point=i;
-                connective_parts.push_back(biTuple(start_point, end_point));
+                valid_seg_in_1col.push_back(Range(start_point, end_point));
             }
             last_data = data;
         }
-        return connective_parts;
+        return valid_seg_in_1col;
     }
 
-    Mat GetAdjecencyMatrix(const Slice &parts_left, const Slice &parts_right) {
+    Mat GetAdjMatrix(const vector<Range> &parts_left, const vector<Range> &parts_right) {
         Mat adjacency_mat(parts_left.size(), parts_right.size(), CV_8UC1);      //Mat(int rows, int cols, int type);
         for(int i=0; i<parts_left.size(); ++i) {
-            biTuple lparts = parts_left[i];
+            Range lparts = parts_left[i];
             for(int j=0; j<parts_right.size(); ++j) {
-                biTuple rparts = parts_right[j];
-                if((std::min(lparts.b,rparts.b) - std::max(lparts.a,rparts.a)) >0) {
+                Range rparts = parts_right[j];
+                if((std::min(lparts.end,rparts.end) - std::max(lparts.start,rparts.start)) >0) {
                     adjacency_mat.at<u_char>(i,j) = 1;
                 } else {
                     adjacency_mat.at<u_char>(i,j) = 0;
@@ -67,32 +54,35 @@ public:
         return adjacency_mat;
     }
 
-    Mat Calcbcd(const Mat &map, int &current_cell) {
-        int last_connectivity = 0;
-        Slice last_connective_parts;
-        current_cell = 1;
-        Mat current_cells;
+    Mat Calcbcd(const Mat &entire_map, int &regions_cnt) {
+        int valid_segs_cnt_in_last_col = 0;
+        vector<Range> valid_segs_in_last_col;
+        regions_cnt = 1;
+        vector<int> split_regions_indexes;
         Mat seperate_map;
-        map.copyTo(seperate_map);
+        entire_map.copyTo(seperate_map);
 
-        for(int col=0; col<map.cols; ++col) {
-            Mat current_slice=map.col(col);     //逐列取出
-            int connectivity;
-            Slice connective_parts = CalcConnectivity(current_slice, connectivity);
+        for(int col=0; col<entire_map.cols; ++col) {
+            Mat current_col = entire_map.col(col);     //逐列取出
+            int valid_segs_cnt_in_1col;
+            vector<Range> valid_segs_in_1col = CalcConnectivity(current_col, valid_segs_cnt_in_1col);
+//            for(auto seg : valid_segs_in_1col) {
+//                cout << "列" << col << " : " << seg.start << " " << seg.end << endl;
+//            }
 
-            if(last_connectivity == 0) {
-                current_cells.release();
-                for(int i=0; i<connectivity; ++i){
-                    current_cells.push_back(current_cell);
-                    current_cell += 1;
+            if(valid_segs_cnt_in_last_col == 0) {
+                split_regions_indexes.clear();
+                for(int i=0; i<valid_segs_cnt_in_1col; ++i){
+                    split_regions_indexes.push_back(regions_cnt);
+                    regions_cnt += 1;
                 }
-            }else if(connectivity == 0) {
-                current_cells.release();
+            }else if(valid_segs_cnt_in_1col == 0) {
+                split_regions_indexes.clear();
 //        continue;
             }else{
-                Mat adj_matrix = GetAdjecencyMatrix(last_connective_parts, connective_parts);
-                Mat new_cells;
-                for(int i=0; i<connectivity; ++i) {
+                Mat adj_matrix = GetAdjMatrix(valid_segs_in_last_col, valid_segs_in_1col);
+                vector<int> new_cells;
+                for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
                     new_cells.push_back(0);
                 }
 
@@ -101,15 +91,15 @@ public:
                     if (sum(row) == 1) {
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
-                                new_cells.at<u_char>(j) = current_cells.at<u_char>(i);
+                                new_cells[j] = split_regions_indexes[i];
                                 break;
                             }
                         }
                     } else if(sum(row) > 1) {
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
-                                new_cells.at<u_char>(j) = current_cell;
-                                current_cell += 1;
+                                new_cells[j] = regions_cnt;
+                                regions_cnt += 1;
                             }
                         }
                     }
@@ -118,19 +108,19 @@ public:
                 for(int i=0; i<adj_matrix.cols; ++i) {
                     Mat col = adj_matrix.col(i);
                     if(sum(col) > 1 ) {
-                        new_cells.at<u_char>(i) = current_cell++;
+                        new_cells[i] = regions_cnt++;
                     }else if(sum(col) == 0) {
-                        new_cells.at<u_char>(i) = current_cell++;
+                        new_cells[i] = regions_cnt++;
                     }
                 }
-                new_cells.copyTo(current_cells);
+                split_regions_indexes = new_cells;
             }
 
-            for(int i=0; i<connectivity; ++i) {
-                seperate_map(Range(connective_parts[i].a, connective_parts[i].b), Range(col, col+1)) = current_cells.at<u_char>(i);
+            for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
+                seperate_map(Range(valid_segs_in_1col[i].start, valid_segs_in_1col[i].end), Range(col, col+1)) = split_regions_indexes[i];
             }
-            last_connective_parts = connective_parts;
-            last_connectivity = connectivity;
+            valid_segs_in_last_col = valid_segs_in_1col;
+            valid_segs_cnt_in_last_col = valid_segs_cnt_in_1col;
 
         }
         return seperate_map;
@@ -146,20 +136,19 @@ public:
         return sum;
     }
 
-    Mat DisplaySeparateMap(const Mat &separate_map, const int &cells) {
-        int rows = separate_map.rows;
-        int cols = separate_map.cols;
-        Mat display_mat(rows, cols, CV_8UC3);
-        Mat random_colors;
-        random_colors.create(cells, 3, CV_8UC1);
-        cv::RNG rnger(cv::getTickCount());
-        rnger.fill(random_colors, cv::RNG::UNIFORM, cv::Scalar::all(0), cv::Scalar::all(256));
+    Mat DisplaySeparateMap(const Mat &separate_map, int regions_cnt) {
+        Mat display_mat(separate_map.size(), CV_8UC3, cv::Scalar::all(0));
 
-        for(int cell=0;cell<cells;++cell) {
-            Mat color=random_colors.row(cell);
-            for(int i=0;i<rows;++i) {
-                for(int j=0;j<cols;++j) {
-                    if(separate_map.at<u_char>(i,j) == cell) {
+        Mat random_colors;
+        random_colors.create(regions_cnt, 3, CV_8UC1);
+        cv::RNG rnger(1);
+        rnger.fill(random_colors, cv::RNG::UNIFORM, cv::Scalar::all(0), cv::Scalar::all(255));
+
+        for(int region_index=0; region_index<regions_cnt; ++region_index) {
+            Mat color = random_colors.row(region_index);
+            for(int i=0; i<separate_map.rows; ++i) {
+                for(int j=0; j<separate_map.cols; ++j) {
+                    if(separate_map.at<u_char>(i,j) == region_index) {
 //            display_mat.at<Vec3b>(i,j)[0]=color.at<u_char>(0);
 //            display_mat.at<Vec3b>(i,j)[1]=color.at<u_char>(1);
 //            display_mat.at<Vec3b>(i,j)[2]=color.at<u_char>(2);
@@ -167,6 +156,8 @@ public:
                     }
                 }
             }
+            imshow("BCD_Window", display_mat);
+            waitKey();
         }
 
         return display_mat;
