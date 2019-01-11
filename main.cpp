@@ -25,22 +25,19 @@ int main() {
     Mat separate_map= niu.Calcbcd(img_b, regions_cnt);
     cout << "Separate image sucessed! " << regions_cnt << endl;
     hist(separate_map);
-    imshow("separate_map", separate_map);
-    waitKey();
+//    imshow("separate_map", separate_map);
+//    waitKey();
 
-    Mat temp(separate_map.size(), CV_8UC3, cv::Scalar::all(0));
-    for(int i=0; i<separate_map.rows; ++i) {
-        for(int j=0; j<separate_map.cols; ++j) {
-            if(separate_map.at<u_char>(i,j) == 0) {
-//                temp.at<Vec3b>(i,j)[0] = 0;
-//                temp.at<Vec3b>(i,j)[1] = 255;
-//                temp.at<Vec3b>(i,j)[2] = 0;
-                circle(temp, Point(j,i), 2, Scalar(0,255,0), -1);
-            }
-        }
-    }
-    imshow("temp", temp);
-    waitKey();
+//    Mat temp(separate_map.size(), CV_8UC3, cv::Scalar::all(0));
+//    for(int i=0; i<separate_map.rows; ++i) {
+//        for(int j=0; j<separate_map.cols; ++j) {
+//            if(separate_map.at<u_char>(i,j) == 0) {
+//                circle(temp, Point(j,i), 2, Scalar(0,255,0), -1);
+//            }
+//        }
+//    }
+//    imshow("temp", temp);
+//    waitKey();
 
     Mat display_mat= niu.DisplaySeparateMap(separate_map, regions_cnt);
     cout << "Display Separate image sucessed!" << endl;

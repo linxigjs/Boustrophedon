@@ -38,20 +38,21 @@ public:
         return valid_seg_in_1col;
     }
 
-    Mat GetAdjMatrix(const vector<Range> &parts_left, const vector<Range> &parts_right) {
-        Mat adjacency_mat(parts_left.size(), parts_right.size(), CV_8UC1);      //Mat(int rows, int cols, int type);
-        for(int i=0; i<parts_left.size(); ++i) {
-            Range lparts = parts_left[i];
-            for(int j=0; j<parts_right.size(); ++j) {
-                Range rparts = parts_right[j];
-                if((std::min(lparts.end,rparts.end) - std::max(lparts.start,rparts.start)) >0) {
-                    adjacency_mat.at<u_char>(i,j) = 1;
+    Mat GetAdjMatrix(const vector<Range> &last_col, const vector<Range> &cur_col) {
+        int last_col_segs_cnt = last_col.size(), cur_col_segs_cnt = cur_col.size();
+        Mat adj_mat(last_col_segs_cnt, cur_col_segs_cnt, CV_8UC1);      //Mat(int rows, int cols, int type);
+        for(int i=0; i<last_col_segs_cnt; ++i) {
+            Range last_col_1seg = last_col[i];
+            for(int j=0; j<cur_col_segs_cnt; ++j) {
+                Range cur_col_1seg = cur_col[j];
+                if((std::min(last_col_1seg.end,cur_col_1seg.end) - std::max(last_col_1seg.start,cur_col_1seg.start)) > 0) {
+                    adj_mat.at<u_char>(i,j) = 1;        //1表示相邻2列有邻接的valid像素
                 } else {
-                    adjacency_mat.at<u_char>(i,j) = 0;
+                    adj_mat.at<u_char>(i,j) = 0;        //0表示相邻2列没有邻接的valid像素
                 }
             }
         }
-        return adjacency_mat;
+        return adj_mat;
     }
 
     Mat Calcbcd(const Mat &entire_map, int &regions_cnt) {
@@ -81,24 +82,24 @@ public:
 //        continue;
             }else{
                 Mat adj_matrix = GetAdjMatrix(valid_segs_in_last_col, valid_segs_in_1col);
-                vector<int> new_cells;
-                for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
-                    new_cells.push_back(0);
-                }
+                vector<int> temp_regions_indexes(valid_segs_cnt_in_1col, 0);
+//                for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
+//                    temp_regions_indexes.push_back(0);
+//                }
 
                 for(int i=0; i<adj_matrix.rows; ++i) {
                     Mat row = adj_matrix.row(i);
                     if (sum(row) == 1) {
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
-                                new_cells[j] = split_regions_indexes[i];
+                                temp_regions_indexes[j] = split_regions_indexes[i];
                                 break;
                             }
                         }
                     } else if(sum(row) > 1) {
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
-                                new_cells[j] = regions_cnt;
+                                temp_regions_indexes[j] = regions_cnt;
                                 regions_cnt += 1;
                             }
                         }
@@ -108,16 +109,16 @@ public:
                 for(int i=0; i<adj_matrix.cols; ++i) {
                     Mat col = adj_matrix.col(i);
                     if(sum(col) > 1 ) {
-                        new_cells[i] = regions_cnt++;
+                        temp_regions_indexes[i] = regions_cnt++;
                     }else if(sum(col) == 0) {
-                        new_cells[i] = regions_cnt++;
+                        temp_regions_indexes[i] = regions_cnt++;
                     }
                 }
-                split_regions_indexes = new_cells;
+                split_regions_indexes = temp_regions_indexes;
             }
 
             for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
-                seperate_map(Range(valid_segs_in_1col[i].start, valid_segs_in_1col[i].end), Range(col, col+1)) = split_regions_indexes[i];
+                seperate_map(Range(valid_segs_in_1col[i].start, valid_segs_in_1col[i].end+1), Range(col, col+1)) = split_regions_indexes[i];
             }
             valid_segs_in_last_col = valid_segs_in_1col;
             valid_segs_cnt_in_last_col = valid_segs_cnt_in_1col;
