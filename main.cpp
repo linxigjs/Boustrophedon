@@ -1,23 +1,22 @@
 
 #include "Boustrophedon.h"
+#include "utils.h"
 
 using namespace std;
 using namespace cv;
 
-int main(int argc, char** argv)
-{
-
-    Mat img= imread("../yard3.png");
+int main() {
+    //must input binary gray image.
+    Mat img= imread("../yard3.png", 0);
     if(img.empty()){
         cout << "Load image failed!" << endl;
         return 0;
     }
-    Mat img_R;
-    cvtColor(img, img_R, CV_BGR2GRAY);//三通道的图转化为1通道的灰度图
+    hist(img);
 
-    imshow("Gray_Window", img_R);
+    imshow("Gray_Window", img);
     Mat img_b;
-    threshold(img_R, img_b, 0, 1, THRESH_BINARY_INV);//通过阈值操作把灰度图变成二值图
+    threshold(img, img_b, 0, 1, THRESH_BINARY_INV);//通过阈值操作把灰度图变成二值图
 
     imshow("Bin_Window", img_b);
     int cells=0;
