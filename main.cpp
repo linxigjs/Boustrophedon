@@ -12,17 +12,19 @@ int main() {
         cout << "Load image failed!" << endl;
         return 0;
     }
-    hist(img);
+//    hist(img);
 
     imshow("Gray_Window", img);
     Mat img_b;
-    threshold(img, img_b, 0, 1, THRESH_BINARY_INV);//通过阈值操作把灰度图变成二值图
-
+    threshold(img, img_b, 1, 255, THRESH_BINARY_INV);//通过阈值操作把灰度图变成二值图
     imshow("Bin_Window", img_b);
+
     int cells=0;
-    Mat separate_map=Boustrophedon::calc_bcd(img_b, cells);
-    cout << "Separate image sucessed!" << endl;
-    Mat display_mat=Boustrophedon::display_separate_map(separate_map, cells);
+    Boustrophedon niu;
+    Mat separate_map= niu.Calcbcd(img_b, cells);
+    cout << "Separate image sucessed! " << cells << endl;
+
+    Mat display_mat= niu.DisplaySeparateMap(separate_map, cells);
     cout << "Display Separate image sucessed!" << endl;
 
     imshow("BCD_Window", display_mat);
