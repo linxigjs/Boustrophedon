@@ -56,11 +56,11 @@ public:
     }
 
     Mat Calcbcd(const Mat &entire_map, int &regions_cnt) {
-        int valid_segs_cnt_in_last_col = 0;
-        vector<Range> valid_segs_in_last_col;
+        int valid_segs_cnt_in_last_col = 0;     //考察的上一列像素的区域个数
+        vector<Range> valid_segs_in_last_col;   //考察的上一列像素的区域范围
         regions_cnt = 1;
-        vector<int> split_regions_indexes;
-        Mat seperate_map;
+        vector<int> split_regions_indexes;      //存放分割的子区域的序号
+        Mat seperate_map;       //将单像素所属的区域序号作为其像素值
         entire_map.copyTo(seperate_map);
 
         for(int col=0; col<entire_map.cols; ++col) {
@@ -82,35 +82,40 @@ public:
 //        continue;
             }else{
                 Mat adj_matrix = GetAdjMatrix(valid_segs_in_last_col, valid_segs_in_1col);
-                vector<int> temp_regions_indexes(valid_segs_cnt_in_1col, 0);
+                vector<int> temp_regions_indexes(valid_segs_cnt_in_1col, 0);    //temp_regions_indexes用来考察当前列在之前结果基础上的区域划分
 //                for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
 //                    temp_regions_indexes.push_back(0);
 //                }
 
+                //i代表左侧列第n段，j代表右侧列第n段
                 for(int i=0; i<adj_matrix.rows; ++i) {
                     Mat row = adj_matrix.row(i);
-                    if (sum(row) == 1) {
+                    if (sum(row) == 1) {        //情况1：左列某1段和右列某1段仅有一段邻接
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
-                                temp_regions_indexes[j] = split_regions_indexes[i];
-                                break;
+                                temp_regions_indexes[j] = split_regions_indexes[i];     //把左列的区域编号赋值给右列，以前->现在
+                                break;      //因为只有1段邻接，没必要继续遍历其余列了
                             }
                         }
-                    } else if(sum(row) > 1) {
+                    } else if(sum(row) > 1) {   //情况2：左列1段和右列多段有邻接
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<u_char>(j)>0) {
                                 temp_regions_indexes[j] = regions_cnt;
                                 regions_cnt += 1;
+                                //右列中至少2段与左侧同一段邻接，说明右列被（障碍物）打断了，因此多了2个新的分区，故总计数++
                             }
                         }
                     }
                 }
 
+                //对以上分类讨论的补充，i代表右侧列第n段
                 for(int i=0; i<adj_matrix.cols; ++i) {
                     Mat col = adj_matrix.col(i);
                     if(sum(col) > 1 ) {
+                        //情况3：对应右列某段与左列至少2段邻接的情况，对情况1的修正
                         temp_regions_indexes[i] = regions_cnt++;
                     }else if(sum(col) == 0) {
+                        //情况4：对应右列某段与左列都不邻接的情况
                         temp_regions_indexes[i] = regions_cnt++;
                     }
                 }
