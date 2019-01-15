@@ -6,7 +6,7 @@ using namespace cv;
 
 int main() {
     //must input binary gray image.
-    Mat img= imread("../yard3.png", 0);
+    Mat img= imread("../yard4.png", 0);
     if(img.empty()){
         cout << "Load image failed!" << endl;
         return 0;
@@ -19,7 +19,7 @@ int main() {
 //    waitKey();
 
     Boustrophedon niu;
-    niu.setRobot_radius(5);
+    niu.setRobot_radius(8);
     niu.setOverlap(5);
     niu.setBinary_map(img_b);
     niu.PlanBowPath();

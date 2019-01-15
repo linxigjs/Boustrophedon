@@ -6,11 +6,15 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "utils.h"
+#include "InscribedRectFinder.h"
 
 using namespace cv;
 using namespace std;
 
+class InscribedRectFinder;
+
 //Todo:在具体应用中，某些区域含有极少的像素数，建议把这些区域检索出来做特殊处理
+//Todo:子区域边界处留的空隙较大，可以通过“交替纵横弓字形切割+沿边”来解决。（该方法无法彻底解决）
 
 class Boustrophedon{
 private:
@@ -154,19 +158,16 @@ public:
     }
 
     void CalcBowPath() {
-        for(auto &elem : regions_) {
-            if(!CheckPassable(elem.second)) {
-                cout << "This region is too narrow, ignore it." << endl;
-                cout << "gray value: " << elem.first << ", rows = " << elem.second.rows << ", cols = " << elem.second.cols << endl;
-                regions_.erase(elem.first);
-                regions_cnt_--;
+        for(auto it = regions_.begin(); it!=regions_.end(); it++) {
+            if(!CheckPassable(it->second)) {
+                cout << "This region is too narrow, ignore it." << " gray value: " << it->first << endl;
                 continue;
             }
 //            string winname("grayvalue ");
 //            winname += to_string(elem.first);
             int expand_pixels = 20;
             Mat gray_region;
-            copyMakeBorder(elem.second, gray_region, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
+            copyMakeBorder(it->second, gray_region, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
                            cv::BORDER_CONSTANT, Scalar::all(0));
 //            imshow(winname, gray_region);
 //            waitKey();
@@ -301,16 +302,15 @@ private:
             for(int i=0; i<reg_dilate.rows; i++) {
                 int v = reg_dilate.at<uchar>(i,j);
                 if(v != lastv) {
-//                    circle(gray_region, Point(j,i), 2, Scalar(128), -1);
                     tps.emplace_back(Point(j-expand_pixels, i-expand_pixels));
                 }
                 lastv = v;
             }
         }
-//        imshow("region", region);
-//        waitKey();
-        ReOrderBow(tps);
-        bow_path_.emplace_back(tps);
+        if(!tps.empty()) {
+            ReOrderBow(tps);
+            bow_path_.emplace_back(tps);
+        }
     }
 
     bool CheckPassable(Mat binary_map) {
@@ -318,14 +318,14 @@ private:
 //        waitKey();
         vector<vector<cv::Point>> contours;
         findContours(binary_map, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-//        drawContours(binary_map, contours, -1, cv::Scalar(128), 4);
-//        imshow("CheckPassable", binary_map);
-//        waitKey();
-        Rect external_rect = boundingRect(contours[0]);
-        //Todo: 应该用内接矩形的
-//        Rect inscribed_rect = CalcInscribedRect(binary_map, Point(external_rect.x, external_rect.y));
-        int thresh = 2*robot_radius_;
-        if(external_rect.width < thresh || external_rect.height < thresh) {
+        int thresh = 1.5*robot_radius_;
+        RotatedRect external_rect = minAreaRect(contours[0]);
+//        Rect external_rect = boundingRect(contours[0]);
+        //使用子区域的内接矩形判段是否容纳的下Robot，但是findRectangle()非常慢
+        InscribedRectFinder finder;
+        Rect inscribed_rect = finder.findRectangle(binary_map);
+//        if(external_rect.width < thresh || external_rect.height < thresh) {
+        if(external_rect.boundingRect().width < thresh || external_rect.boundingRect().height < thresh) {
             return false;
         }
         return true;
