@@ -11,30 +11,27 @@
 using namespace cv;
 using namespace std;
 
-inline int hist(Mat image) {
+inline int hist(Mat image, bool info = false) {
     const int channels=image.channels();
     int nRows=image.rows;
     int nCols=image.cols*channels;
     vector<int> hist_result(257);
     //用指针访问像素，速度最快
     uchar *p;
-    for(int i=0;i<nRows;i++)
-    {
-        p=image.ptr<uchar>(i);//获取每行首地址
-        for(int j=0;j<nCols;++j)
-        {
+    for(int i=0;i<nRows;i++) {
+        p = image.ptr<uchar>(i);//获取每行首地址
+        for(int j=0; j<nCols; ++j) {
             ++hist_result[p[j]];
-//            if(p[j]>128)
-//                p[j]=0;
-//            else
-//                p[j]=255;
         }
     }
-    for(int i=0; i < static_cast<int>(hist_result.size()); i++) {
-        if(hist_result[i] != 0) {
-            cout << "灰度值=" << i << " ，个数=" << hist_result[i] << endl;
+    if(info) {
+        for(int i=0; i < static_cast<int>(hist_result.size()); i++) {
+            if(hist_result[i] != 0) {
+                cout << "灰度值=" << i << " ，个数=" << hist_result[i] << endl;
+            }
         }
     }
+
     return count_if(hist_result.begin(), hist_result.end(), [](int v){ return v != 0;});
 }
 
