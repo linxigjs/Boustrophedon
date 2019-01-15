@@ -155,14 +155,21 @@ public:
 
     void CalcBowPath() {
         for(auto &elem : regions_) {
-            string winname("grayvalue ");
-            winname += to_string(elem.first);
+            if(!CheckPassable(elem.second)) {
+                cout << "This region is too narrow, ignore it." << endl;
+                cout << "gray value: " << elem.first << ", rows = " << elem.second.rows << ", cols = " << elem.second.cols << endl;
+                regions_.erase(elem.first);
+                regions_cnt_--;
+                continue;
+            }
+//            string winname("grayvalue ");
+//            winname += to_string(elem.first);
             int expand_pixels = 20;
             Mat gray_region;
             copyMakeBorder(elem.second, gray_region, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
                            cv::BORDER_CONSTANT, Scalar::all(0));
-            imshow(winname, gray_region);
-            waitKey();
+//            imshow(winname, gray_region);
+//            waitKey();
             CalcBowPath(gray_region, expand_pixels);
         }
     }
@@ -304,6 +311,24 @@ private:
 //        waitKey();
         ReOrderBow(tps);
         bow_path_.emplace_back(tps);
+    }
+
+    bool CheckPassable(Mat binary_map) {
+//        imshow("CheckPassable", binary_map);
+//        waitKey();
+        vector<vector<cv::Point>> contours;
+        findContours(binary_map, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+//        drawContours(binary_map, contours, -1, cv::Scalar(128), 4);
+//        imshow("CheckPassable", binary_map);
+//        waitKey();
+        Rect external_rect = boundingRect(contours[0]);
+        //Todo: 应该用内接矩形的
+//        Rect inscribed_rect = CalcInscribedRect(binary_map, Point(external_rect.x, external_rect.y));
+        int thresh = 2*robot_radius_;
+        if(external_rect.width < thresh || external_rect.height < thresh) {
+            return false;
+        }
+        return true;
     }
 };
 

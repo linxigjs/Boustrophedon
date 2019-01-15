@@ -6,7 +6,7 @@ using namespace cv;
 
 int main() {
     //must input binary gray image.
-    Mat img= imread("../yard2.png", 0);
+    Mat img= imread("../yard3.png", 0);
     if(img.empty()){
         cout << "Load image failed!" << endl;
         return 0;
