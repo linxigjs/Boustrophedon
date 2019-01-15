@@ -191,12 +191,12 @@ public:
         }
         vector<vector<Point>> turn_points;
         for(auto &elem : regions) {
-            string winname("grayvalue ");
-            winname += to_string(elem.first);
+//            string winname("grayvalue ");
+//            winname += to_string(elem.first);
             int expand_pixels = 20;
             copyMakeBorder(elem.second, elem.second, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
                            cv::BORDER_CONSTANT, Scalar::all(0));
-            imshow(winname, elem.second);
+//            imshow(winname, elem.second);
             CalcBow(elem.second, expand_pixels, turn_points);
         }
 
@@ -205,13 +205,14 @@ public:
     }
 
     void CalcBow(Mat region, int expand_pixels, vector<vector<Point>> &turn_points) {
-        int robot_radius = 5, overlap = 5;
+        int robot_radius = 8, overlap = 5;
         cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(2 * robot_radius, 2 * robot_radius),
                                                 cv::Point(robot_radius, robot_radius));
         threshold(region, region, 1, 255, THRESH_BINARY_INV);   //反色
         Mat reg_dilate;
         cv::dilate(region, reg_dilate, element);
-        int lastv = 0;
+
+        int lastv = 255;
         vector<Point> tps;
         for(int j=0; j<reg_dilate.cols; j+=overlap) {
             for(int i=0; i<reg_dilate.rows; i++) {
@@ -223,8 +224,8 @@ public:
                 lastv = v;
             }
         }
-        imshow("region", region);
-        waitKey();
+//        imshow("region", region);
+//        waitKey();
         ReOrderBow(tps);
         turn_points.emplace_back(tps);
     }
@@ -233,7 +234,6 @@ public:
     void ReOrderBow(vector<T> &tps) {
         if(IsOdd(tps.size())) {
             cout << "Warning: points num is odd." << endl;
-//            tps.pop_back();
         }
         vector<T> temp;
         bool turn = false;
