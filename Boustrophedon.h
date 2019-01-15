@@ -5,10 +5,12 @@
 #include <math.h>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include "utils.h"
 
 using namespace cv;
 using namespace std;
 
+//Todo:在具体应用中，某些区域含有极少的像素数，建议把这些区域检索出来做特殊处理
 
 class Boustrophedon{
 private:
@@ -132,16 +134,6 @@ public:
         return seperate_map;
     }
 
-    int sum(const Mat &mat) {
-        int sum=0;
-        for(int i=0; i<mat.rows; i++) {
-            for(int j=0; j<mat.cols; j++) {
-                sum += mat.at<u_char>(i,j);
-            }
-        }
-        return sum;
-    }
-
     Mat DisplaySeparateMap(const Mat &separate_map, int regions_cnt) {
         Mat display_mat(separate_map.size(), CV_8UC3, cv::Scalar::all(0));
 
@@ -155,19 +147,121 @@ public:
             for(int i=0; i<separate_map.rows; ++i) {
                 for(int j=0; j<separate_map.cols; ++j) {
                     if(separate_map.at<u_char>(i,j) == region_index) {
-//            display_mat.at<Vec3b>(i,j)[0]=color.at<u_char>(0);
-//            display_mat.at<Vec3b>(i,j)[1]=color.at<u_char>(1);
-//            display_mat.at<Vec3b>(i,j)[2]=color.at<u_char>(2);
                         display_mat.at<Vec3b>(i,j) = color;
                     }
                 }
             }
-            imshow("BCD_Window", display_mat);
-            waitKey();
+//            imshow("separate_map", display_mat);
+//            waitKey();
         }
 
         return display_mat;
     }
+
+    void SplitToRegions(const Mat &entire_map, int regions_cnt) {
+        vector<vector<Point>> contours;
+        Mat temp(entire_map.size(), CV_8UC3, Scalar::all(0)), entire_graymap;
+
+        cvtColor(entire_map, entire_graymap, COLOR_BGR2GRAY);
+        imshow("gray map", entire_graymap);
+        if(hist(entire_graymap) != regions_cnt) {
+            cout << hist(entire_graymap) << "  " << regions_cnt << endl;
+            cout << "Error: has reduplicate gray values." << endl;
+            return;
+        }
+
+        map<int, Mat> regions;
+        vector<int> grayvalues(1, 0);
+        for(int i=0; i<entire_graymap.rows; i++) {
+            for(int j=0; j<entire_graymap.cols; j++) {
+                int v = entire_graymap.at<u_char>(i,j);
+                if(find(grayvalues.begin(), grayvalues.end(), v) == grayvalues.end()) {
+                    grayvalues.emplace_back(v);
+                    Mat reg(entire_graymap.size(), CV_8UC1, Scalar::all(0));
+                    regions.insert({v, reg});
+                }
+                if(v != 0) {
+                    regions[v].at<u_char>(i,j) = 255;
+                }
+            }
+        }
+        if(regions.size() != regions_cnt-1 || grayvalues.size() != regions_cnt) {
+            cout << "Error: regions' count and split are wrong." << endl;
+            return;
+        }
+        vector<vector<Point>> turn_points;
+        for(auto &elem : regions) {
+            string winname("grayvalue ");
+            winname += to_string(elem.first);
+            int expand_pixels = 20;
+            copyMakeBorder(elem.second, elem.second, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
+                           cv::BORDER_CONSTANT, Scalar::all(0));
+            imshow(winname, elem.second);
+            CalcBow(elem.second, expand_pixels, turn_points);
+        }
+
+        ShowBow(entire_map, turn_points);
+
+    }
+
+    void CalcBow(Mat region, int expand_pixels, vector<vector<Point>> &turn_points) {
+        int robot_radius = 5, overlap = 5;
+        cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(2 * robot_radius, 2 * robot_radius),
+                                                cv::Point(robot_radius, robot_radius));
+        threshold(region, region, 1, 255, THRESH_BINARY_INV);   //反色
+        Mat reg_dilate;
+        cv::dilate(region, reg_dilate, element);
+        int lastv = 0;
+        vector<Point> tps;
+        for(int j=0; j<reg_dilate.cols; j+=overlap) {
+            for(int i=0; i<reg_dilate.rows; i++) {
+                int v = reg_dilate.at<u_char>(i,j);
+                if(v != lastv) {
+                    circle(region, Point(j,i), 2, Scalar(128), -1);
+                    tps.emplace_back(Point(j-expand_pixels, i-expand_pixels));
+                }
+                lastv = v;
+            }
+        }
+        imshow("region", region);
+        waitKey();
+        ReOrderBow(tps);
+        turn_points.emplace_back(tps);
+    }
+
+    template <typename T>
+    void ReOrderBow(vector<T> &tps) {
+        if(IsOdd(tps.size())) {
+            cout << "Warning: points num is odd." << endl;
+//            tps.pop_back();
+        }
+        vector<T> temp;
+        bool turn = false;
+        for(int i=0; i<tps.size(); i=i+2) {
+            if(turn) {
+                temp.emplace_back(tps[i+1]);
+                temp.emplace_back(tps[i]);
+                turn = false;
+            } else {
+                temp.emplace_back(tps[i]);
+                temp.emplace_back(tps[i+1]);
+                turn = true;
+            }
+        }
+        tps = temp;
+    }
+
+    Mat ShowBow(Mat entire_map, const vector<vector<Point>> &turn_points) {
+        for(const auto &pts : turn_points) {
+            for(int i=0; i<pts.size()-1; i++) {
+                line(entire_map, pts[i], pts[i+1], Scalar(0,255,0));
+            }
+        }
+        imshow("Bow", entire_map);
+        waitKey();
+        return entire_map;
+    }
+
 };
 
 #endif //BOUSTROPHEDON_BOUSTROPHEDON_H

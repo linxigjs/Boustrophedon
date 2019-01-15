@@ -11,7 +11,7 @@
 using namespace cv;
 using namespace std;
 
-inline void hist(Mat image) {
+inline int hist(Mat image) {
     const int channels=image.channels();
     int nRows=image.rows;
     int nCols=image.cols*channels;
@@ -35,7 +35,23 @@ inline void hist(Mat image) {
             cout << "灰度值=" << i << " ，个数=" << hist_result[i] << endl;
         }
     }
+    return count_if(hist_result.begin(), hist_result.end(), [](int v){ return v != 0;});
 }
+
+inline int sum(const Mat &mat) {
+    int sum=0;
+    for(int i=0; i<mat.rows; i++) {
+        for(int j=0; j<mat.cols; j++) {
+            sum += mat.at<u_char>(i,j);
+        }
+    }
+    return sum;
+}
+
+inline bool IsOdd(int v) {
+    return v%2 == 1;
+}
+
 
 
 #endif //BOUSTROPHEDON_UTILS_H
