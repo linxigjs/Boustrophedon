@@ -23,7 +23,7 @@ private:
     int regions_cnt_ = 0;
 
     Mat binary_map_, split_graymap_;
-    vector<vector<Point>> bow_path_;
+    vector<vector<Point>> bow_path_;    //其中每一个vector都是一个子分区内的弓字路径
     map<int, Mat> regions_;
 
 public:
@@ -164,7 +164,7 @@ public:
                 continue;
             }
 //            string winname("grayvalue ");
-//            winname += to_string(elem.first);
+//            winname += to_string(it->first);
             int expand_pixels = 20;
             Mat gray_region;
             copyMakeBorder(it->second, gray_region, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
@@ -290,15 +290,43 @@ private:
     }
 
     void CalcBowPath(Mat gray_region, int expand_pixels) {
+        //计算子分区的宽度（图片列数）
+        vector<vector<cv::Point>> contours;
+        findContours(gray_region, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        cv::Rect bounding_rect = boundingRect(contours[0]);
         cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(2 * robot_radius_, 2 * robot_radius_),
                                                 cv::Point(robot_radius_, robot_radius_));
         threshold(gray_region, gray_region, 1, 255, THRESH_BINARY_INV);   //反色
         Mat reg_dilate;
         cv::dilate(gray_region, reg_dilate, element);
+//        imshow("gray_region dilate", reg_dilate);
+//        waitKey();
 
-        int lastv = 255;
+        int lastv = 255, lastj = -1;
         vector<Point> tps;
-        for(int j=0; j<reg_dilate.cols; j+=overlap_) {
+        //Todo:可优化，无需遍历整幅图像
+//        for(int j=0; j<reg_dilate.cols; j+=overlap_) {
+//            for(int i=0; i<reg_dilate.rows; i++) {
+//                int v = reg_dilate.at<uchar>(i,j);
+//                if(v != lastv) {
+//                    tps.emplace_back(Point(j-expand_pixels, i-expand_pixels));
+//                }
+//                lastv = v;
+//            }
+//        }
+        for(int j=bounding_rect.x; j<bounding_rect.x+bounding_rect.width; j+=overlap_) {
+            for(int i=0; i<reg_dilate.rows; i++) {
+                int v = reg_dilate.at<uchar>(i,j);
+                if(v != lastv) {
+                    tps.emplace_back(Point(j-expand_pixels, i-expand_pixels));
+                }
+                lastv = v;
+            }
+        }
+        //处理每个子区域剩余的窄条
+        int last_width = (bounding_rect.x+bounding_rect.width) % overlap_;
+        if(last_width > robot_radius_) {
+            int j = tps.back().x + last_width>>1;
             for(int i=0; i<reg_dilate.rows; i++) {
                 int v = reg_dilate.at<uchar>(i,j);
                 if(v != lastv) {

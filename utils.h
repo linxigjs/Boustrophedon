@@ -11,6 +11,19 @@
 using namespace cv;
 using namespace std;
 
+inline int RotateImageClockwise90(cv::Mat &src) {
+    if (src.empty()) {
+        cout << "Image src is empty!" << endl;
+        return 1;
+    }
+    cv::Mat temp;
+    // 矩阵转置
+    cv::transpose(src, temp);
+    //0: 沿X轴翻转； >0: 沿Y轴翻转； <0: 沿X轴和Y轴翻转
+    cv::flip(temp, src, 1);// 翻转模式，flipCode == 0垂直翻转（沿X轴翻转），flipCode>0水平翻转（沿Y轴翻转），flipCode<0水平垂直翻转（先沿X轴翻转，再沿Y轴翻转，等价于旋转180°）
+    return 0;
+}
+
 inline int hist(Mat image, bool info = false) {
     const int channels=image.channels();
     int nRows=image.rows;
