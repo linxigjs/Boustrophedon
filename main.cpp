@@ -11,8 +11,8 @@ int main() {
         cout << "Load image failed!" << endl;
         return 0;
     }
-    imshow("Source input", img);
-    waitKey();
+//    imshow("Source input", img);
+//    waitKey();
     Mat img_b;
     threshold(img, img_b, 1, 255, THRESH_BINARY_INV);//通过阈值操作把灰度图变成二值图
     imshow("Binary img, Source map", img_b);
@@ -25,8 +25,8 @@ int main() {
     waitKey();
 
     Boustrophedon niu;
-    niu.setRobot_radius(8);
-    niu.setOverlap(5);
+    niu.setRobot_radius(16);
+    niu.setOverlap(16);
     niu.setBinary_map(img_b);
     niu.PlanBowPath();
     cout << "Separate gray map sucessed! " << endl;

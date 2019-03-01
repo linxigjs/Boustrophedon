@@ -16,6 +16,8 @@ class InscribedRectFinder;
 //Todo:在具体应用中，某些区域含有极少的像素数，建议把这些区域检索出来做特殊处理
 //Todo:子区域边界处留的空隙较大，可以通过“交替纵横弓字形切割+沿边”来解决。（该方法无法彻底解决）
 
+//输入该类的地图（图片）必须是二值灰度图像，白色表示障碍物，黑色表示可行区域
+
 class Boustrophedon{
 private:
     int obstacle_ = 255, valid_ = 0;
@@ -63,14 +65,14 @@ public:
                 //i代表左侧列第n段，j代表右侧列第n段
                 for(int i=0; i<adj_matrix.rows; ++i) {
                     Mat row = adj_matrix.row(i);
-                    if (sum(row) == 1) {        //情况1：左列某1段和右列某1段仅有一段邻接
+                    if (sum(row)[0] == 1) {        //情况1：左列某1段和右列某1段仅有一段邻接
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<uchar>(j)>0) {
                                 temp_regions_indexes[j] = split_regions_indexes[i];     //把左列的区域编号赋值给右列，以前->现在
                                 break;      //因为只有1段邻接，没必要继续遍历其余列了
                             }
                         }
-                    } else if(sum(row) > 1) {   //情况2：左列1段和右列多段有邻接
+                    } else if(sum(row)[0] > 1) {   //情况2：左列1段和右列多段有邻接
                         for(int j=0; j<row.cols; ++j) {
                             if(row.at<uchar>(j)>0) {
                                 temp_regions_indexes[j] = regions_cnt_;
@@ -84,10 +86,10 @@ public:
                 //对以上分类讨论的补充，i代表右侧列第n段
                 for(int i=0; i<adj_matrix.cols; ++i) {
                     Mat col = adj_matrix.col(i);
-                    if(sum(col) > 1 ) {
+                    if(sum(col)[0] > 1 ) {
                         //情况3：对应右列某段与左列至少2段邻接的情况，对情况1的修正
                         temp_regions_indexes[i] = regions_cnt_++;
-                    }else if(sum(col) == 0) {
+                    }else if(sum(col)[0] == 0) {
                         //情况4：对应右列某段与左列都不邻接的情况
                         temp_regions_indexes[i] = regions_cnt_++;
                     }
@@ -299,21 +301,9 @@ private:
         threshold(gray_region, gray_region, 1, 255, THRESH_BINARY_INV);   //反色
         Mat reg_dilate;
         cv::dilate(gray_region, reg_dilate, element);
-//        imshow("gray_region dilate", reg_dilate);
-//        waitKey();
 
         int lastv = 255, lastj = -1;
         vector<Point> tps;
-        //Todo:可优化，无需遍历整幅图像
-//        for(int j=0; j<reg_dilate.cols; j+=overlap_) {
-//            for(int i=0; i<reg_dilate.rows; i++) {
-//                int v = reg_dilate.at<uchar>(i,j);
-//                if(v != lastv) {
-//                    tps.emplace_back(Point(j-expand_pixels, i-expand_pixels));
-//                }
-//                lastv = v;
-//            }
-//        }
         for(int j=bounding_rect.x; j<bounding_rect.x+bounding_rect.width; j+=overlap_) {
             for(int i=0; i<reg_dilate.rows; i++) {
                 int v = reg_dilate.at<uchar>(i,j);
@@ -322,11 +312,12 @@ private:
                 }
                 lastv = v;
             }
+            lastj = j;
         }
         //处理每个子区域剩余的窄条
-        int last_width = (bounding_rect.x+bounding_rect.width) % overlap_;
-        if(last_width > robot_radius_) {
-            int j = tps.back().x + last_width>>1;
+        int last_width = (bounding_rect.x+bounding_rect.width) - lastj;
+        if(last_width > 5) {
+            int j = lastj + (last_width>>1);
             for(int i=0; i<reg_dilate.rows; i++) {
                 int v = reg_dilate.at<uchar>(i,j);
                 if(v != lastv) {

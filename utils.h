@@ -47,16 +47,16 @@ inline int hist(Mat image, bool info = false) {
 
     return count_if(hist_result.begin(), hist_result.end(), [](int v){ return v != 0;});
 }
-
-inline int sum(const Mat &mat) {
-    int sum=0;
-    for(int i=0; i<mat.rows; i++) {
-        for(int j=0; j<mat.cols; j++) {
-            sum += mat.at<u_char>(i,j);
-        }
-    }
-    return sum;
-}
+//
+//inline int sum(const Mat &mat) {
+//    int sum=0;
+//    for(int i=0; i<mat.rows; i++) {
+//        for(int j=0; j<mat.cols; j++) {
+//            sum += mat.at<u_char>(i,j);
+//        }
+//    }
+//    return sum;
+//}
 
 inline int CountPixels(const Mat &mat, int v) {
     int cnt=0;
