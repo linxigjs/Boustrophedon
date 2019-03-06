@@ -10,3 +10,5 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(Boustrophedon Boustrophedon.h main.cpp utils.h InscribedRectFinder.h InscribedRectFinder.cpp)
 
 target_link_libraries(Boustrophedon ${OpenCV_LIBS})
+
+add_executable(mytest test.cpp)

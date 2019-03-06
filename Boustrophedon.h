@@ -132,9 +132,9 @@ public:
     map<int, Mat> GetRegions() {
 //        imshow("split result - gray map", split_graymap_);
 //        waitKey();
-        int hist_res = hist(split_graymap_);
+        int hist_res = hist(split_graymap_, true);
+        cout << "hist_res=" << hist_res << ", regions_cnt_=" << regions_cnt_ << endl;
         if(hist_res != regions_cnt_) {
-            cout << hist_res << "  " << regions_cnt_ << endl;
             throw logic_error("has reduplicate gray values");
         }
 
@@ -152,8 +152,9 @@ public:
                 }
             }
         }
+        cout << "regions_.size()=" << regions_.size() << ", grayvalues.size()=" << grayvalues.size()
+             << ", regions_cnt_=" << regions_cnt_ << endl;
         if(regions_.size() != regions_cnt_-1 || grayvalues.size() != regions_cnt_) {
-            cout << regions_.size() << " " << grayvalues.size() << " " << regions_cnt_ << endl;
             throw logic_error("regions' count and split are wrong");
         }
         return regions_;
