@@ -38,6 +38,7 @@ public:
     }
 
     int SplitMapToRegions() {
+        set<int> regions_cnt_helper;
         int valid_segs_cnt_in_last_col = 0;     //考察的上一列像素的区域个数
         vector<Range> valid_segs_in_last_col;   //考察的上一列像素的区域范围
         regions_cnt_ = 1;
@@ -95,6 +96,9 @@ public:
                     }
                 }
                 split_regions_indexes = temp_regions_indexes;
+                for(int ind : temp_regions_indexes) {
+                    regions_cnt_helper.emplace(ind);
+                }
             }
 
             for(int i=0; i<valid_segs_cnt_in_1col; ++i) {
@@ -104,6 +108,8 @@ public:
             valid_segs_cnt_in_last_col = valid_segs_cnt_in_1col;
         }
         hist(split_graymap_, true);
+        regions_cnt_ = static_cast<int>(regions_cnt_helper.size()) + 1;
+        cout << "regions_cnt_helper, regions_cnt_=" << regions_cnt_ << endl;
         return regions_cnt_;
     }
 

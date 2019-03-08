@@ -44,8 +44,17 @@ inline int hist(Mat image, bool info = false) {
             }
         }
     }
+    int cnt = 0;
+    for(int e : hist_result) {
+        if(e != 0) {
+            cnt++;
+        }
+    }
+    cout << "数数=" << cnt << "   ";
 
-    return count_if(hist_result.begin(), hist_result.end(), [](int v){ return v != 0;});
+    int res = count_if(hist_result.begin(), hist_result.end(), [](int v){ return v != 0;});
+    cout << ", count_if=" << res << endl;
+    return res;
 }
 //
 //inline int sum(const Mat &mat) {
@@ -73,6 +82,22 @@ inline bool IsOdd(int v) {
     return v%2 == 1;
 }
 
+inline int DilateImage(cv::Mat &img, int dilate_pixels, bool show) {
+    cv::Mat temp_after_expand, temp_after_dilate;
+    int expand_pixels = 20;
+    cv::copyMakeBorder(img, temp_after_expand, expand_pixels, expand_pixels, expand_pixels, expand_pixels,
+                       cv::BORDER_CONSTANT, cv::Scalar(255,255,255));
+    cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(2 * dilate_pixels, 2 * dilate_pixels),
+                                            cv::Point(dilate_pixels, dilate_pixels));
+    cv::dilate(temp_after_expand, temp_after_dilate, element); //膨胀腐蚀不改变原图
+    cv::Rect kernel = cv::Rect(expand_pixels, expand_pixels, img.cols, img.rows);
+    img = temp_after_dilate(kernel);
+    if(show) {
+        cv::imshow("dst image after dilate", img);
+        cv::waitKey();
+    }
+    return 0;
+}
 
 
 #endif //BOUSTROPHEDON_UTILS_H

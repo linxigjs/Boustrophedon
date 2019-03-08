@@ -19,10 +19,8 @@ int main() {
     imshow("Binary img, Source map", img_b);
     waitKey();
     int dilate_pixels = 4;
-    cv::Mat element = getStructuringElement(cv::MORPH_RECT, cv::Size(2 * dilate_pixels, 2 * dilate_pixels),
-                                            cv::Point(dilate_pixels, dilate_pixels));
-    dilate(img_b, img_b, element);
-    imshow("obstacle dilate", img_b);
+    DilateImage(img_b, dilate_pixels, true);
+    imshow("after obstacle dilate", img_b);
     waitKey();
 
     Boustrophedon niu;
